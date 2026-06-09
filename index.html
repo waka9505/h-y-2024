@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2024中国卫生健康统计年鉴</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .slide-enter-active, .slide-leave-active { transition: transform 0.3s ease; }
+        .slide-enter-from { transform: translateX(-100%); }
+        .slide-leave-to { transform: translateX(-100%); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .table-container { overflow-x: auto; }
+        .table-container table { min-width: 100%; }
+        .highlight { background-color: #fef08a; padding: 1px 2px; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航 -->
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <button @click="showSidebar = !showSidebar" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                            </svg>
+                        </button>
+                        <h1 class="text-xl font-bold text-gray-800">2024卫生健康统计年鉴</h1>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-500 hidden sm:inline">数据来源：国家卫生健康委员会</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 py-6">
+            <div class="flex gap-6">
+                <!-- 侧边栏 -->
+                <aside class="w-64 flex-shrink-0 lg:block" :class="{ 'hidden': !showSidebar }">
+                    <div class="bg-white rounded-xl shadow-sm p-4 sticky top-20">
+                        <h3 class="font-semibold text-gray-700 mb-3">章节分类</h3>
+                        <nav class="space-y-1">
+                            <button 
+                                v-for="(name, key) in chapters" 
+                                :key="key"
+                                @click="selectChapter(key)"
+                                :class="['w-full text-left px-3 py-2 rounded-lg text-sm transition-colors', 
+                                         selectedChapter === key ? 'bg-blue-50 text-blue-600 font-medium' : 'hover:bg-gray-50 text-gray-600']"
+                            >
+                                {{ name }}
+                                <span class="float-right text-xs text-gray-400">{{ getChapterCount(key) }}</span>
+                            </button>
+                        </nav>
+                    </div>
+                </aside>
+
+                <!-- 主内容区 -->
+                <main class="flex-1 min-w-0">
+                    <!-- 搜索框 -->
+                    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+                        <div class="relative">
+                            <input 
+                                v-model="searchQuery"
+                                type="text" 
+                                placeholder="搜索表名、指标、地区..."
+                                class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                @input="handleSearch"
+                            >
+                            <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <button 
+                                v-if="searchQuery"
+                                @click="clearSearch"
+                                class="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div v-if="searchQuery" class="mt-2 text-sm text-gray-500">
+                            找到 {{ filteredTables.length }} 个相关表格
+                        </div>
+                    </div>
+
+                    <!-- 表格列表 -->
+                    <div v-if="!selectedTable" class="space-y-4">
+                        <div 
+                            v-for="table in paginatedTables" 
+                            :key="table.id"
+                            @click="selectTable(table)"
+                            class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
+                        >
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-medium text-gray-800 truncate">{{ table.title }}</h4>
+                                    <p class="text-sm text-gray-500 mt-1">
+                                        {{ chapters[table.chapter] || '其他' }} · {{ table.data.length }}行数据
+                                    </p>
+                                </div>
+                                <svg class="w-5 h-5 text-gray-400 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- 分页 -->
+                        <div v-if="totalPages > 1" class="flex justify-center space-x-2 py-4">
+                            <button 
+                                v-for="page in displayedPages" 
+                                :key="page"
+                                @click="currentPage = page"
+                                :class="['px-3 py-1 rounded-lg text-sm', 
+                                         currentPage === page ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50']"
+                            >
+                                {{ page }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 表格详情 -->
+                    <div v-else class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <div class="p-4 border-b border-gray-100">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <button @click="selectedTable = null" class="text-blue-500 hover:text-blue-600 text-sm mb-2">
+                                        ← 返回列表
+                                    </button>
+                                    <h3 class="font-semibold text-gray-800">{{ selectedTable.title }}</h3>
+                                    <p class="text-sm text-gray-500 mt-1">{{ chapters[selectedTable.chapter] || '其他' }}</p>
+                                </div>
+                                <button 
+                                    @click="exportTable"
+                                    class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
+                                >
+                                    导出CSV
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-container p-4">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th 
+                                            v-for="(col, idx) in selectedTable.columns" 
+                                            :key="idx"
+                                            class="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap"
+                                        >
+                                            {{ col }}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <tr v-for="(row, idx) in selectedTable.data" :key="idx" class="hover:bg-gray-50">
+                                        <td 
+                                            v-for="(cell, cellIdx) in row" 
+                                            :key="cellIdx"
+                                            class="px-4 py-3 text-gray-700 whitespace-nowrap"
+                                        >
+                                            {{ cell !== null ? cell : '-' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 空状态 -->
+                    <div v-if="filteredTables.length === 0 && searchQuery" class="bg-white rounded-xl shadow-sm p-8 text-center">
+                        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-gray-500">未找到相关表格</p>
+                        <p class="text-sm text-gray-400 mt-1">试试其他关键词</p>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- 移动端侧边栏遮罩 -->
+        <div v-if="showSidebar" @click="showSidebar = false" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"></div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, watch } = Vue;
+
+        createApp({
+            setup() {
+                const data = ref({ chapters: {}, tables: [] });
+                const searchQuery = ref('');
+                const selectedChapter = ref(null);
+                const selectedTable = ref(null);
+                const currentPage = ref(1);
+                const showSidebar = ref(false);
+                const pageSize = 20;
+
+                // 加载数据
+                fetch('yearbook_data.json')
+                    .then(r => r.json())
+                    .then(d => { data.value = d; });
+
+                const chapters = computed(() => data.value.chapters || {});
+                const tables = computed(() => data.value.tables || []);
+
+                // 过滤表格
+                const filteredTables = computed(() => {
+                    let result = tables.value;
+                    
+                    if (selectedChapter.value) {
+                        result = result.filter(t => t.chapter === selectedChapter.value);
+                    }
+                    
+                    if (searchQuery.value) {
+                        const query = searchQuery.value.toLowerCase();
+                        result = result.filter(t => 
+                            t.title.toLowerCase().includes(query) ||
+                            t.columns.some(c => c.toLowerCase().includes(query)) ||
+                            t.data.some(row => row.some(cell => 
+                                cell !== null && String(cell).toLowerCase().includes(query)
+                            ))
+                        );
+                    }
+                    
+                    return result;
+                });
+
+                // 分页
+                const totalPages = computed(() => Math.ceil(filteredTables.value.length / pageSize));
+                const paginatedTables = computed(() => {
+                    const start = (currentPage.value - 1) * pageSize;
+                    return filteredTables.value.slice(start, start + pageSize);
+                });
+
+                const displayedPages = computed(() => {
+                    const pages = [];
+                    const total = totalPages.value;
+                    const current = currentPage.value;
+                    
+                    if (total <= 7) {
+                        for (let i = 1; i <= total; i++) pages.push(i);
+                    } else {
+                        pages.push(1);
+                        if (current > 3) pages.push('...');
+                        for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+                            pages.push(i);
+                        }
+                        if (current < total - 2) pages.push('...');
+                        pages.push(total);
+                    }
+                    
+                    return pages;
+                });
+
+                // 方法
+                const selectChapter = (key) => {
+                    selectedChapter.value = selectedChapter.value === key ? null : key;
+                    currentPage.value = 1;
+                    selectedTable.value = null;
+                    showSidebar.value = false;
+                };
+
+                const selectTable = (table) => {
+                    selectedTable.value = table;
+                };
+
+                const handleSearch = () => {
+                    currentPage.value = 1;
+                    selectedTable.value = null;
+                };
+
+                const clearSearch = () => {
+                    searchQuery.value = '';
+                    currentPage.value = 1;
+                };
+
+                const getChapterCount = (key) => {
+                    return tables.value.filter(t => t.chapter === key).length;
+                };
+
+                const exportTable = () => {
+                    if (!selectedTable.value) return;
+                    
+                    const table = selectedTable.value;
+                    const headers = table.columns.join(',');
+                    const rows = table.data.map(row => 
+                        row.map(cell => `"${cell !== null ? String(cell).replace(/"/g, '""') : ''}"`).join(',')
+                    ).join('\n');
+                    
+                    const csv = headers + '\n' + rows;
+                    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${table.title}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+
+                return {
+                    data,
+                    searchQuery,
+                    selectedChapter,
+                    selectedTable,
+                    currentPage,
+                    showSidebar,
+                    chapters,
+                    tables,
+                    filteredTables,
+                    paginatedTables,
+                    totalPages,
+                    displayedPages,
+                    selectChapter,
+                    selectTable,
+                    handleSearch,
+                    clearSearch,
+                    getChapterCount,
+                    exportTable
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
