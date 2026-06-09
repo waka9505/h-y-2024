@@ -24,7 +24,29 @@
     </style>
 </head>
 <body>
-    <div id="app">
+    <!-- 密码保护层 -->
+    <div id="password-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; z-index: 9999;">
+        <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; max-width: 400px; width: 90%;">
+            <h2 style="margin: 0 0 10px 0; font-size: 24px; color: #333;">🔒 访问验证</h2>
+            <p style="margin: 0 0 20px 0; color: #666; font-size: 14px;">请输入访问密码查看年鉴数据</p>
+            <input 
+                type="password" 
+                id="password-input"
+                placeholder="请输入密码"
+                style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; outline: none; box-sizing: border-box;"
+                onkeypress="if(event.keyCode===13) checkPassword()"
+            >
+            <button 
+                onclick="checkPassword()"
+                style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 12px;"
+            >
+                进入
+            </button>
+            <p id="error-msg" style="margin: 10px 0 0 0; color: #e74c3c; font-size: 13px; display: none;">密码错误，请重试</p>
+        </div>
+    </div>
+
+    <div id="app" style="display: none;">
         <!-- 顶部导航 -->
         <header class="bg-white shadow-sm sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 py-3">
@@ -331,6 +353,40 @@
                 };
             }
         }).mount('#app');
+    </script>
+
+    <!-- 密码验证脚本 -->
+    <script>
+        // 设置密码（修改这里可以更改密码）
+        const CORRECT_PASSWORD = 'xtsz2024';
+        
+        function checkPassword() {
+            const input = document.getElementById('password-input').value;
+            const overlay = document.getElementById('password-overlay');
+            const app = document.getElementById('app');
+            const errorMsg = document.getElementById('error-msg');
+            
+            if (input === CORRECT_PASSWORD) {
+                overlay.style.display = 'none';
+                app.style.display = 'block';
+                // 保存到sessionStorage，同一会话不需要重复输入
+                sessionStorage.setItem('yearbook_auth', 'true');
+            } else {
+                errorMsg.style.display = 'block';
+                document.getElementById('password-input').value = '';
+                document.getElementById('password-input').focus();
+            }
+        }
+        
+        // 检查是否已经验证过
+        window.onload = function() {
+            if (sessionStorage.getItem('yearbook_auth') === 'true') {
+                document.getElementById('password-overlay').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+            } else {
+                document.getElementById('password-input').focus();
+            }
+        };
     </script>
 </body>
 </html>
