@@ -245,12 +245,12 @@
                     }
                     
                     if (searchQuery.value) {
-                        const query = searchQuery.value.toLowerCase();
+                        const query = searchQuery.value.toLowerCase().replace(/\s+/g, '');
                         result = result.filter(t => 
-                            t.title.toLowerCase().includes(query) ||
-                            t.columns.some(c => c.toLowerCase().includes(query)) ||
+                            t.title.toLowerCase().replace(/\s+/g, '').includes(query) ||
+                            t.columns.some(c => c.toLowerCase().replace(/\s+/g, '').includes(query)) ||
                             t.data.some(row => row.some(cell => 
-                                cell !== null && String(cell).toLowerCase().includes(query)
+                                cell !== null && String(cell).toLowerCase().replace(/\s+/g, '').includes(query)
                             ))
                         );
                     }
