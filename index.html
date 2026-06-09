@@ -266,6 +266,7 @@
                 // 方法
                 const selectChapter = (key) => {
                     selectedChapter.value = selectedChapter.value === key ? null : key;
+                    searchQuery.value = '';  // 清空搜索框
                     currentPage.value = 1;
                     selectedTable.value = null;
                     showSidebar.value = false;
